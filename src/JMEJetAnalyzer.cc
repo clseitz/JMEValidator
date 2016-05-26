@@ -103,6 +103,8 @@ JMEJetAnalyzer::JMEJetAnalyzer(const edm::ParameterSet& iConfig)
   if      (JetCorLabel_.find("chs") != std::string::npos)   std::cout << " USING CHS" << std::endl;
   else if (JetCorLabel_.find("PUPPI") != std::string::npos) std::cout << " USING PUPPI" << std::endl;
   else                                                      std::cout << std::endl;
+
+  std::cout<<"end of setup"<<std::endl;
 }
 
 
@@ -123,7 +125,6 @@ JMEJetAnalyzer::~JMEJetAnalyzer()
 void JMEJetAnalyzer::analyze(const edm::Event& iEvent,
                                   const edm::EventSetup& iSetup)
 {
-
   // // EVENT DATA HANDLES
   edm::Handle<reco::CandidateView>               refs;
   edm::Handle<std::vector<pat::Jet> >            jets;
@@ -142,29 +143,33 @@ void JMEJetAnalyzer::analyze(const edm::Event& iEvent,
   for (size_t iJet = 0; iJet < nJet; iJet++) {
 
      pat::Jet const & jet = jets->at(iJet);
-     if (jet.pt() < 5)
+     //CS change cut to 15 
+     if (jet.pt() < 15)
          continue;
      
      extractBasicProperties(jet);
 
-     const reco::GenJet* ref = jet.genJet();
-     if (ref) {
+     if (has_gen_jets) {
+       const reco::GenJet* ref = jet.genJet();
+       if (ref) {
          refdrjt.push_back(reco::deltaR(jet, *ref));
          refpdgid.push_back(ref->pdgId());
          refarea.push_back(ref->jetArea());
-     } else {
+       } else {
          refdrjt.push_back(0);
          refpdgid.push_back(0.);
          refarea.push_back(0.);
-     }
+       }
+       extractGenProperties(ref);
 
-     extractGenProperties(ref);
+     
 
      // New jet flavor informations
      // See https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideBTagMCTools
      partonFlavor.push_back(jet.genParton() ? jet.genParton()->pdgId() : 0);
      hadronFlavor.push_back(jet.hadronFlavour());
-
+     }
+     
      // b-tagging discriminators
      // Create one branch per discriminators for disk-space reasons (more than 50% smaller)
      for (const auto& btag: jet.getPairDiscri()) {
@@ -314,7 +319,7 @@ void JMEJetAnalyzer::analyze(const edm::Event& iEvent,
               pat::Jet const & jet = jets->at(iJet);
               if( jet.pt() < 5 ){ continue; }
 
-              const reco::GenJet* matched_ref_jet = jet.genJet();
+	      const reco::GenJet* matched_ref_jet = jet.genJet();
               if( ! matched_ref_jet ) {  continue ; }
 
               if( genjet.pt()  != matched_ref_jet->pt() ) { continue ;}
